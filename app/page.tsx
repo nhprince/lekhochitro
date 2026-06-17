@@ -2,11 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import Graph, { type GraphHandle } from "@/components/Graph";
+import Graph3D from "@/components/Graph3D";
 import FunctionList from "@/components/FunctionList";
 import Controls from "@/components/Controls";
 import Solver from "@/components/Solver";
 import TableOfValues from "@/components/TableOfValues";
 import ShareLink from "@/components/ShareLink";
+import AIAssistant from "@/components/AIAssistant";
 import {
   ViewPort,
   DEFAULT_VIEW,
@@ -25,7 +27,11 @@ interface FunctionItem {
   sliders?: SliderParam[];
 }
 
-function getInitialState(): { fns: FunctionItem[]; view: ViewPort; mode: GraphMode } | null {
+function getInitialState(): {
+  fns: FunctionItem[];
+  view: ViewPort;
+  mode: GraphMode;
+} | null {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash;
   if (!hash) return null;
@@ -37,7 +43,13 @@ function getInitialState(): { fns: FunctionItem[]; view: ViewPort; mode: GraphMo
       expression: f.e,
       color: f.c,
       visible: f.v,
-      sliders: f.s?.map((sl) => ({ name: sl.n, value: sl.v, min: sl.min, max: sl.max, step: sl.st })),
+      sliders: f.s?.map((sl) => ({
+        name: sl.n,
+        value: sl.v,
+        min: sl.min,
+        max: sl.max,
+        step: sl.st,
+      })),
     })),
     view: state.v,
     mode: state.m || "cartesian",
@@ -50,10 +62,11 @@ export default function Home() {
     initial?.fns ?? [
       { id: "1", expression: "sin(x)", color: COLORS[0], visible: true },
       { id: "2", expression: "cos(x)", color: COLORS[1], visible: true },
-    ]
+    ],
   );
   const [view, setView] = useState<ViewPort>(initial?.view ?? DEFAULT_VIEW);
   const [mode, setMode] = useState<GraphMode>(initial?.mode ?? "cartesian");
+  const [show3D, setShow3D] = useState(false);
   const [showSolver, setShowSolver] = useState(false);
   const [showTable, setShowTable] = useState(false);
 
@@ -124,6 +137,19 @@ export default function Home() {
     URL.revokeObjectURL(link.href);
   }, []);
 
+  const handleAddFunction = useCallback(
+    (expression: string) => {
+      const newFn: FunctionItem = {
+        id: crypto.randomUUID(),
+        expression,
+        color: COLORS[functions.length % COLORS.length],
+        visible: true,
+      };
+      setFunctions((prev) => [...prev, newFn]);
+    },
+    [functions.length],
+  );
+
   // Compute serialized URL for share button
   const serializedUrl = useMemo(() => {
     return serializeState({
@@ -143,6 +169,11 @@ export default function Home() {
       m: mode,
     });
   }, [functions, view, mode]);
+
+  // Get the first visible function for 3D mode
+  const firstVisibleFn = useMemo(() => {
+    return functions.find((f) => f.visible && f.expression.trim());
+  }, [functions]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-bg-primary overflow-hidden">
@@ -187,6 +218,16 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <ShareLink serializedUrl={serializedUrl} />
           <button
+            onClick={() => setShow3D(!show3D)}
+            className={`px-2.5 py-1.5 rounded-md border text-xs font-mono transition-colors ${
+              show3D
+                ? "bg-accent/20 border-accent/30 text-accent"
+                : "bg-bg-secondary/80 border-axis text-text-secondary hover:text-accent hover:border-accent/50"
+            }`}
+          >
+            3D
+          </button>
+          <button
             onClick={() => {
               setShowSolver(!showSolver);
               setShowTable(false);
@@ -219,19 +260,38 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         {/* Graph area */}
         <div className="flex-1 relative">
-          <Graph
-            ref={graphRef}
-            functions={functions}
-            onViewChange={handleViewChange}
-            params={params}
-            mode={mode}
-          />
-          <Controls
-            view={view}
-            onViewChange={setView}
-            onExportPNG={handleExportPNG}
-            onExportSVG={handleExportSVG}
-          />
+          {show3D ? (
+            firstVisibleFn ? (
+              <Graph3D expression={firstVisibleFn.expression} params={params} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-bg-primary">
+                <div className="text-center">
+                  <p className="text-text-muted font-mono text-sm">
+                    Add a function to view in 3D
+                  </p>
+                  <p className="text-text-muted/50 font-mono text-xs mt-1">
+                    e.g., sin(x)*cos(y)
+                  </p>
+                </div>
+              </div>
+            )
+          ) : (
+            <>
+              <Graph
+                ref={graphRef}
+                functions={functions}
+                onViewChange={handleViewChange}
+                params={params}
+                mode={mode}
+              />
+              <Controls
+                view={view}
+                onViewChange={setView}
+                onExportPNG={handleExportPNG}
+                onExportSVG={handleExportSVG}
+              />
+            </>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -247,9 +307,7 @@ export default function Home() {
           {showSolver && (
             <Solver functions={functions} view={view} params={params} />
           )}
-          {showTable && (
-            <TableOfValues functions={functions} params={params} />
-          )}
+          {showTable && <TableOfValues functions={functions} params={params} />}
         </div>
       </div>
 
@@ -262,6 +320,9 @@ export default function Home() {
           onModeChange={setMode}
         />
       </div>
+
+      {/* AI Assistant */}
+      <AIAssistant onAddFunction={handleAddFunction} />
     </div>
   );
 }
