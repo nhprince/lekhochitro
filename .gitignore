@@ -38,3 +38,4 @@ pnpm-debug.log*
 
 # Wrangler
 .wrangler/
+tsconfig.tsbuildinfo
