@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Plus, Eye, EyeOff, Trash2, Settings2 } from "lucide-react";
-import { COLORS, type GraphMode } from "@/lib/graph-utils";
+import { COLORS, type SliderParam, type GraphMode } from "@/lib/graph-utils";
 import { isValidExpression, detectParameters } from "@/lib/math";
 
 interface FunctionItem {
