@@ -1,14 +1,21 @@
 "use client";
 
-import { Home, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { Home, ZoomIn, ZoomOut, Download, FileImage } from "lucide-react";
 import { ViewPort, DEFAULT_VIEW } from "@/lib/graph-utils";
 
 interface ControlsProps {
   view: ViewPort;
   onViewChange: (view: ViewPort) => void;
+  onExportPNG?: () => void;
+  onExportSVG?: () => void;
 }
 
-export default function Controls({ view, onViewChange }: ControlsProps) {
+export default function Controls({
+  view,
+  onViewChange,
+  onExportPNG,
+  onExportSVG,
+}: ControlsProps) {
   const zoomIn = () => {
     const xCenter = (view.xMin + view.xMax) / 2;
     const yCenter = (view.yMin + view.yMax) / 2;
@@ -39,11 +46,6 @@ export default function Controls({ view, onViewChange }: ControlsProps) {
     onViewChange(DEFAULT_VIEW);
   };
 
-  const fitToScreen = () => {
-    // Reset to a nice default that shows the most common functions well
-    onViewChange(DEFAULT_VIEW);
-  };
-
   return (
     <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
       <button
@@ -67,13 +69,29 @@ export default function Controls({ view, onViewChange }: ControlsProps) {
       >
         <Home size={16} />
       </button>
-      <button
-        onClick={fitToScreen}
-        className="p-2 rounded-lg bg-bg-secondary/80 backdrop-blur-sm border border-axis hover:border-accent/50 text-text-secondary hover:text-accent transition-colors"
-        title="Fit to screen"
-      >
-        <Maximize2 size={16} />
-      </button>
+      {(onExportPNG || onExportSVG) && (
+        <>
+          <div className="h-px bg-axis my-1" />
+          {onExportPNG && (
+            <button
+              onClick={onExportPNG}
+              className="p-2 rounded-lg bg-bg-secondary/80 backdrop-blur-sm border border-axis hover:border-accent/50 text-text-secondary hover:text-accent transition-colors"
+              title="Export PNG"
+            >
+              <FileImage size={16} />
+            </button>
+          )}
+          {onExportSVG && (
+            <button
+              onClick={onExportSVG}
+              className="p-2 rounded-lg bg-bg-secondary/80 backdrop-blur-sm border border-axis hover:border-accent/50 text-text-secondary hover:text-accent transition-colors"
+              title="Export SVG"
+            >
+              <Download size={16} />
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }

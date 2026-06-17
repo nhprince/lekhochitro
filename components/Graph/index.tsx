@@ -1,7 +1,25 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
-import { ViewPort, DEFAULT_VIEW, mathToPixel, pixelToMath, generatePoints, niceTickSpacing, formatLabel, COLORS } from "@/lib/graph-utils";
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import {
+  ViewPort,
+  DEFAULT_VIEW,
+  mathToPixel,
+  pixelToMath,
+  generatePoints,
+  generatePolarPoints,
+  niceTickSpacing,
+  formatLabel,
+  COLORS,
+  type GraphMode,
+} from "@/lib/graph-utils";
 import { evaluateExpression } from "@/lib/math";
 
 interface FunctionItem {
@@ -14,17 +32,37 @@ interface FunctionItem {
 interface GraphProps {
   functions: FunctionItem[];
   onViewChange?: (view: ViewPort) => void;
+  params?: Record<string, number>;
+  mode?: GraphMode;
 }
 
-export default function Graph({ functions, onViewChange }: GraphProps) {
+export interface GraphHandle {
+  getCanvas: () => HTMLCanvasElement | null;
+}
+
+const Graph = forwardRef<GraphHandle, GraphProps>(function Graph(
+  { functions, onViewChange, params = {}, mode = "cartesian" },
+  ref,
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ViewPort>(DEFAULT_VIEW);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [hoverInfo, setHoverInfo] = useState<{
+    x: number;
+    y: number;
+    values: { color: string; y: number }[];
+  } | null>(null);
   const isDragging = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
   const animFrameRef = useRef<number>(0);
+
+  useImperativeHandle(ref, () => ({
+    getCanvas: () => canvasRef.current,
+  }));
 
   // Resize handler
   useEffect(() => {
@@ -68,7 +106,6 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
     ctx.strokeStyle = "#1e1e2e";
     ctx.lineWidth = 1;
 
-    // Vertical grid lines
     const xStart = Math.ceil(xMin / xTickSpacing) * xTickSpacing;
     for (let x = xStart; x <= xMax; x += xTickSpacing) {
       const { px } = mathToPixel(x, 0, view, width, height);
@@ -78,7 +115,6 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
       ctx.stroke();
     }
 
-    // Horizontal grid lines
     const yStart = Math.ceil(yMin / yTickSpacing) * yTickSpacing;
     for (let y = yStart; y <= yMax; y += yTickSpacing) {
       const { py } = mathToPixel(0, y, view, width, height);
@@ -93,15 +129,12 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
     ctx.strokeStyle = "#3b3b4f";
     ctx.lineWidth = 1.5;
 
-    // X axis
     if (yMin <= 0 && yMax >= 0) {
       ctx.beginPath();
       ctx.moveTo(0, origin.py);
       ctx.lineTo(width, origin.py);
       ctx.stroke();
     }
-
-    // Y axis
     if (xMin <= 0 && xMax >= 0) {
       ctx.beginPath();
       ctx.moveTo(origin.px, 0);
@@ -111,14 +144,17 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
 
     // Axis labels
     ctx.fillStyle = "#71717a";
-    ctx.font = "11px 'JetBrains Mono', monospace";
+    ctx.font = "11px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
 
     for (let x = xStart; x <= xMax; x += xTickSpacing) {
       if (Math.abs(x) < xTickSpacing * 0.01) continue;
       const { px, py } = mathToPixel(x, 0, view, width, height);
-      const labelY = yMin <= 0 && yMax >= 0 ? Math.min(Math.max(py + 4, 2), height - 14) : height - 14;
+      const labelY =
+        yMin <= 0 && yMax >= 0
+          ? Math.min(Math.max(py + 4, 2), height - 14)
+          : height - 14;
       ctx.fillText(formatLabel(x), px, labelY);
     }
 
@@ -127,15 +163,38 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
     for (let y = yStart; y <= yMax; y += yTickSpacing) {
       if (Math.abs(y) < yTickSpacing * 0.01) continue;
       const { px, py } = mathToPixel(0, y, view, width, height);
-      const labelX = xMin <= 0 && xMax >= 0 ? Math.max(Math.min(px - 4, width - 2), 2) : 2;
+      const labelX =
+        xMin <= 0 && xMax >= 0 ? Math.max(Math.min(px - 4, width - 2), 2) : 2;
       ctx.fillText(formatLabel(y), labelX, py);
     }
 
     // Draw functions
-    const visibleFunctions = functions.filter((f) => f.visible && f.expression.trim());
+    const visibleFunctions = functions.filter(
+      (f) => f.visible && f.expression.trim(),
+    );
+
     visibleFunctions.forEach((fn, index) => {
       const color = fn.color || COLORS[index % COLORS.length];
-      const points = generatePoints(fn.expression, view, width, evaluateExpression);
+      let points: { x: number; y: number }[];
+
+      if (mode === "polar") {
+        points = generatePolarPoints(
+          fn.expression,
+          view,
+          width,
+          evaluateExpression,
+          params,
+        );
+      } else {
+        points = generatePoints(
+          fn.expression,
+          view,
+          width,
+          evaluateExpression,
+          params,
+        );
+      }
+
       if (points.length < 2) return;
 
       ctx.strokeStyle = color;
@@ -159,7 +218,6 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
 
     // Crosshair at mouse position
     if (mousePos) {
-      const mathPos = pixelToMath(mousePos.x, mousePos.y, view, width, height);
       ctx.strokeStyle = "#3b3b4f80";
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
@@ -172,26 +230,36 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
       ctx.lineTo(width, mousePos.y);
       ctx.stroke();
       ctx.setLineDash([]);
-
-      // Coordinate label
-      ctx.fillStyle = "#0a0a0f";
-      ctx.fillRect(mousePos.x + 10, mousePos.y - 24, 120, 20);
-      ctx.strokeStyle = "#3b3b4f";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(mousePos.x + 10, mousePos.y - 24, 120, 20);
-      ctx.fillStyle = "#a1a1aa";
-      ctx.font = "11px 'JetBrains Mono', monospace";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(`(${mathPos.x.toFixed(2)}, ${mathPos.y.toFixed(2)})`, mousePos.x + 16, mousePos.y - 14);
     }
-  }, [view, functions, mousePos, canvasSize]);
+  }, [view, functions, mousePos, canvasSize, params, mode]);
 
   useEffect(() => {
     cancelAnimationFrame(animFrameRef.current);
     animFrameRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [draw]);
+
+  // Compute hover values for tooltip
+  const updateHoverInfo = useCallback(
+    (pixelX: number, pixelY: number) => {
+      const mathPos = pixelToMath(
+        pixelX,
+        pixelY,
+        view,
+        canvasSize.width,
+        canvasSize.height,
+      );
+      const visibleFns = functions.filter(
+        (f) => f.visible && f.expression.trim(),
+      );
+      const values = visibleFns.map((fn, i) => ({
+        color: fn.color || COLORS[i % COLORS.length],
+        y: evaluateExpression(fn.expression, mathPos.x, params) ?? NaN,
+      }));
+      setHoverInfo({ x: mathPos.x, y: mathPos.y, values });
+    },
+    [view, canvasSize, functions, params],
+  );
 
   // Mouse handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -203,7 +271,10 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
     (e: React.MouseEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect) {
-        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        setMousePos({ x: cx, y: cy });
+        updateHoverInfo(cx, cy);
       }
 
       if (isDragging.current) {
@@ -227,7 +298,7 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
         });
       }
     },
-    [canvasSize, onViewChange]
+    [canvasSize, onViewChange, updateHoverInfo],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -237,6 +308,7 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
   const handleMouseLeave = useCallback(() => {
     isDragging.current = false;
     setMousePos(null);
+    setHoverInfo(null);
   }, []);
 
   // Zoom handler
@@ -252,7 +324,13 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
       const factor = zoomIn ? 0.85 : 1.18;
 
       setView((prev) => {
-        const mathPos = pixelToMath(mouseX, mouseY, prev, canvasSize.width, canvasSize.height);
+        const mathPos = pixelToMath(
+          mouseX,
+          mouseY,
+          prev,
+          canvasSize.width,
+          canvasSize.height,
+        );
         const newXMin = mathPos.x - (mathPos.x - prev.xMin) * factor;
         const newXMax = mathPos.x + (prev.xMax - mathPos.x) * factor;
         const newYMin = mathPos.y - (mathPos.y - prev.yMin) * factor;
@@ -260,21 +338,35 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
 
         const xRange = newXMax - newXMin;
         const yRange = newYMax - newYMin;
-        if (xRange < 0.05 || yRange < 0.05 || xRange > 100000 || yRange > 100000) return prev;
+        if (
+          xRange < 0.05 ||
+          yRange < 0.05 ||
+          xRange > 100000 ||
+          yRange > 100000
+        )
+          return prev;
 
-        const newView = { xMin: newXMin, xMax: newXMax, yMin: newYMin, yMax: newYMax };
+        const newView = {
+          xMin: newXMin,
+          xMax: newXMax,
+          yMin: newYMin,
+          yMax: newYMax,
+        };
         onViewChange?.(newView);
         return newView;
       });
     },
-    [canvasSize, onViewChange]
+    [canvasSize, onViewChange],
   );
 
-  // Touch handlers for mobile
-  const touchStart = useRef<{ x: number; y: number; dist?: number }[]>([]);
+  // Touch handlers
+  const touchStart = useRef<{ x: number; y: number }[]>([]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touches = Array.from(e.touches).map((t) => ({ x: t.clientX, y: t.clientY }));
+    const touches = Array.from(e.touches).map((t) => ({
+      x: t.clientX,
+      y: t.clientY,
+    }));
     touchStart.current = touches;
     if (touches.length === 1) {
       isDragging.current = true;
@@ -285,7 +377,10 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
       e.preventDefault();
-      const touches = Array.from(e.touches).map((t) => ({ x: t.clientX, y: t.clientY }));
+      const touches = Array.from(e.touches).map((t) => ({
+        x: t.clientX,
+        y: t.clientY,
+      }));
 
       if (touches.length === 1 && isDragging.current) {
         const dx = touches[0].x - lastMouse.current.x;
@@ -309,11 +404,11 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
       } else if (touches.length === 2 && touchStart.current.length === 2) {
         const prevDist = Math.hypot(
           touchStart.current[1].x - touchStart.current[0].x,
-          touchStart.current[1].y - touchStart.current[0].y
+          touchStart.current[1].y - touchStart.current[0].y,
         );
         const currDist = Math.hypot(
           touches[1].x - touches[0].x,
-          touches[1].y - touches[0].y
+          touches[1].y - touches[0].y,
         );
         if (prevDist > 0) {
           const factor = currDist / prevDist;
@@ -325,12 +420,23 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
           const relY = centerY - rect.top;
 
           setView((prev) => {
-            const mathPos = pixelToMath(relX, relY, prev, canvasSize.width, canvasSize.height);
+            const mathPos = pixelToMath(
+              relX,
+              relY,
+              prev,
+              canvasSize.width,
+              canvasSize.height,
+            );
             const newXMin = mathPos.x - (mathPos.x - prev.xMin) / factor;
             const newXMax = mathPos.x + (prev.xMax - mathPos.x) / factor;
             const newYMin = mathPos.y - (mathPos.y - prev.yMin) / factor;
             const newYMax = mathPos.y + (prev.yMax - mathPos.y) / factor;
-            const newView = { xMin: newXMin, xMax: newXMax, yMin: newYMin, yMax: newYMax };
+            const newView = {
+              xMin: newXMin,
+              xMax: newXMax,
+              yMin: newYMin,
+              yMax: newYMax,
+            };
             onViewChange?.(newView);
             return newView;
           });
@@ -338,7 +444,7 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
         touchStart.current = touches;
       }
     },
-    [canvasSize, onViewChange]
+    [canvasSize, onViewChange],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -361,6 +467,31 @@ export default function Graph({ functions, onViewChange }: GraphProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       />
+      {/* Hover tooltip */}
+      {hoverInfo && mousePos && (
+        <div
+          className="absolute pointer-events-none z-20 px-2.5 py-1.5 rounded-md bg-bg-secondary/95 backdrop-blur-sm border border-axis shadow-lg"
+          style={{
+            left: Math.min(mousePos.x + 14, canvasSize.width - 140),
+            top: Math.max(mousePos.y - 10, 4),
+          }}
+        >
+          <div className="text-[10px] font-mono text-text-muted mb-0.5">
+            x = {hoverInfo.x.toFixed(3)}
+          </div>
+          {hoverInfo.values.map((v, i) => (
+            <div
+              key={i}
+              className="text-xs font-mono"
+              style={{ color: v.color }}
+            >
+              y = {isNaN(v.y) ? "—" : v.y.toFixed(3)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
-}
+});
+
+export default Graph;

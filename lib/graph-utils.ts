@@ -40,13 +40,25 @@ export interface PixelPoint {
   py: number;
 }
 
+// Slider parameter definition
+export interface SliderParam {
+  name: string; // e.g. "m", "b", "a"
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+}
+
+// Graph mode type
+export type GraphMode = "cartesian" | "polar" | "parametric";
+
 // Convert math coordinates to canvas pixel coordinates
 export function mathToPixel(
   x: number,
   y: number,
   view: ViewPort,
   width: number,
-  height: number
+  height: number,
 ): PixelPoint {
   const px = ((x - view.xMin) / (view.xMax - view.xMin)) * width;
   const py = height - ((y - view.yMin) / (view.yMax - view.yMin)) * height;
@@ -59,7 +71,7 @@ export function pixelToMath(
   py: number,
   view: ViewPort,
   width: number,
-  height: number
+  height: number,
 ): Point {
   const x = view.xMin + (px / width) * (view.xMax - view.xMin);
   const y = view.yMin + ((height - py) / height) * (view.yMax - view.yMin);
@@ -71,13 +83,85 @@ export function generatePoints(
   expr: string,
   view: ViewPort,
   width: number,
-  evaluateFn: (expr: string, x: number) => number | null
+  evaluateFn: (
+    expr: string,
+    x: number,
+    params?: Record<string, number>,
+  ) => number | null,
+  params?: Record<string, number>,
 ): Point[] {
   const points: Point[] = [];
   const step = (view.xMax - view.xMin) / width;
   for (let x = view.xMin; x <= view.xMax; x += step) {
-    const y = evaluateFn(expr, x);
-    if (y !== null && !isNaN(y) && isFinite(y) && y >= view.yMin - 100 && y <= view.yMax + 100) {
+    const y = evaluateFn(expr, x, params);
+    if (
+      y !== null &&
+      !isNaN(y) &&
+      isFinite(y) &&
+      y >= view.yMin - 100 &&
+      y <= view.yMax + 100
+    ) {
+      points.push({ x, y });
+    }
+  }
+  return points;
+}
+
+// Generate points for polar functions (r = f(θ))
+export function generatePolarPoints(
+  expr: string,
+  view: ViewPort,
+  width: number,
+  evaluateFn: (
+    expr: string,
+    theta: number,
+    params?: Record<string, number>,
+  ) => number | null,
+  params?: Record<string, number>,
+): Point[] {
+  const points: Point[] = [];
+  const steps = Math.max(width, 500);
+  for (let i = 0; i <= steps; i++) {
+    const theta = (i / steps) * Math.PI * 2;
+    const r = evaluateFn(expr, theta, params);
+    if (r !== null && !isNaN(r) && isFinite(r)) {
+      const x = r * Math.cos(theta);
+      const y = r * Math.sin(theta);
+      if (
+        x >= view.xMin - 100 &&
+        x <= view.xMax + 100 &&
+        y >= view.yMin - 100 &&
+        y <= view.yMax + 100
+      ) {
+        points.push({ x, y });
+      }
+    }
+  }
+  return points;
+}
+
+// Generate points for parametric functions (x(t), y(t))
+export function generateParametricPoints(
+  xExpr: string,
+  yExpr: string,
+  tMin: number,
+  tMax: number,
+  view: ViewPort,
+  width: number,
+  evaluateFn: (
+    expr: string,
+    t: number,
+    params?: Record<string, number>,
+  ) => number | null,
+  params?: Record<string, number>,
+): Point[] {
+  const points: Point[] = [];
+  const steps = Math.max(width, 500);
+  for (let i = 0; i <= steps; i++) {
+    const t = tMin + (i / steps) * (tMax - tMin);
+    const x = evaluateFn(xExpr, t, params);
+    const y = evaluateFn(yExpr, t, params);
+    if (x !== null && y !== null && isFinite(x) && isFinite(y)) {
       points.push({ x, y });
     }
   }
@@ -85,7 +169,10 @@ export function generatePoints(
 }
 
 // Calculate nice tick spacing
-export function niceTickSpacing(range: number, targetDivisions: number): number {
+export function niceTickSpacing(
+  range: number,
+  targetDivisions: number,
+): number {
   const roughStep = range / targetDivisions;
   const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
   const residual = roughStep / magnitude;
@@ -102,4 +189,41 @@ export function formatLabel(n: number): string {
   if (Math.abs(n) < 0.001) return "0";
   if (Number.isInteger(n)) return n.toString();
   return n.toFixed(2).replace(/\.?0+$/, "");
+}
+
+// Serialize state to URL hash
+export function serializeState(data: {
+  fns: {
+    e: string;
+    c: string;
+    v: boolean;
+    s?: { n: string; v: number; min: number; max: number; st: number }[];
+  }[];
+  v: ViewPort;
+  m: GraphMode;
+}): string {
+  try {
+    return "#" + encodeURIComponent(JSON.stringify(data));
+  } catch {
+    return "";
+  }
+}
+
+// Deserialize state from URL hash
+export function deserializeState(hash: string): {
+  fns: {
+    e: string;
+    c: string;
+    v: boolean;
+    s?: { n: string; v: number; min: number; max: number; st: number }[];
+  }[];
+  v: ViewPort;
+  m: GraphMode;
+} | null {
+  try {
+    const raw = hash.startsWith("#") ? hash.slice(1) : hash;
+    return JSON.parse(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
 }
