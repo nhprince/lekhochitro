@@ -25,11 +25,7 @@ interface FunctionItem {
   sliders?: SliderParam[];
 }
 
-function loadFromHash(): {
-  fns: FunctionItem[];
-  view: ViewPort;
-  mode: GraphMode;
-} | null {
+function getInitialState(): { fns: FunctionItem[]; view: ViewPort; mode: GraphMode } | null {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash;
   if (!hash) return null;
@@ -41,24 +37,11 @@ function loadFromHash(): {
       expression: f.e,
       color: f.c,
       visible: f.v,
-      sliders: f.s?.map((sl) => ({
-        name: sl.n,
-        value: sl.v,
-        min: sl.min,
-        max: sl.max,
-        step: sl.st,
-      })),
+      sliders: f.s?.map((sl) => ({ name: sl.n, value: sl.v, min: sl.min, max: sl.max, step: sl.st })),
     })),
     view: state.v,
     mode: state.m || "cartesian",
   };
-}
-
-function getInitialState() {
-  if (typeof window === "undefined") return null;
-  const hash = window.location.hash;
-  if (!hash) return null;
-  return deserializeState(hash);
 }
 
 export default function Home() {
@@ -279,7 +262,7 @@ export default function Home() {
             <Solver functions={functions} view={view} params={params} />
           )}
           {showTable && (
-            <TableOfValues functions={functions} view={view} params={params} />
+            <TableOfValues functions={functions} params={params} />
           )}
         </div>
       </div>
