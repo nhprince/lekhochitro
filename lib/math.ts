@@ -15,9 +15,11 @@ export function evaluateExpression(expr: string, x: number): number | null {
 }
 
 export function isValidExpression(expr: string): boolean {
+  if (!expr || expr.trim().length === 0) return false;
   try {
-    math.evaluate(expr, { x: 1 });
-    return true;
+    const result = math.evaluate(expr, { x: 1 });
+    if (typeof result === "number" && isFinite(result)) return true;
+    return false;
   } catch {
     return false;
   }

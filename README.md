@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lekhochitro — গ্রাফ ক্যালকুলেটর
 
-## Getting Started
+A beautiful, fast, web-based graphing calculator. Plot mathematical functions, explore graphs with pan & zoom, and share your creations.
 
-First, run the development server:
+🌐 **Live:** [lekhochitro.pages.dev](https://lekhochitro.pages.dev)
+
+![Lekhochitro](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?logo=tailwind-css)
+![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-orange?logo=cloudflare)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+## Features
+
+- **Function Plotting** — Type any mathematical expression and see it plotted instantly
+- **Interactive Canvas** — Pan by dragging, zoom with scroll wheel (centered on cursor)
+- **Multi-touch Support** — Pinch-to-zoom and drag on mobile devices
+- **Multiple Functions** — Plot multiple expressions simultaneously with color coding
+- **Rich Math Support** — `sin`, `cos`, `tan`, `log`, `ln`, `sqrt`, `abs`, `pi`, `e`, `^`, and more
+- **Crosshair** — Mouse position crosshair with real-time coordinate display
+- **Zoom Controls** — Zoom in/out, reset view, fit to screen
+- **Responsive** — Desktop sidebar layout, mobile bottom panel
+- **Dark Theme** — Desmos-inspired dark UI with Bengali branding
+- **Bengali + English** — Bengali label: "গ্রাফ ক্যালকুলেটর"
+- **No Server** — Static export, runs entirely in the browser
+- **CI/CD** — GitHub Actions: lint → type check → unit tests → build → E2E tests → deploy
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router, Static Export) |
+| Language | TypeScript 5 (strict) |
+| Styling | Tailwind CSS 4 |
+| Math Engine | mathjs |
+| Graph Rendering | HTML5 Canvas API (custom) |
+| Testing | Vitest (unit) + Playwright (E2E) |
+| CI/CD | GitHub Actions |
+| Deployment | Cloudflare Pages |
+| Icons | Lucide React |
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Clone
+git clone https://github.com/nhprince/lekhochitro.git
+cd lekhochitro
+
+# Install
+pnpm install
+
+# Dev server
 pnpm dev
-# or
-bun dev
+
+# Build for production
+pnpm build
+
+# Run tests
+pnpm test              # Unit tests
+pnpm test:coverage     # Unit tests with coverage
+pnpm test:e2e          # E2E tests (requires build)
+pnpm test:all          # Type check + lint + tests + build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Supported Math Expressions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Expression | Description |
+|-----------|-------------|
+| `x^2` | Power |
+| `sin(x)`, `cos(x)`, `tan(x)` | Trigonometric |
+| `asin(x)`, `acos(x)`, `atan(x)` | Inverse trigonometric |
+| `log(x)` | Natural logarithm |
+| `log10(x)` | Base-10 logarithm |
+| `sqrt(x)` | Square root |
+| `abs(x)` | Absolute value |
+| `floor(x)`, `ceil(x)`, `round(x)` | Rounding |
+| `pi`, `e` | Constants |
+| `sin(x^2) + cos(x)` | Nested expressions |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+lekhochitro/
+├── app/
+│   ├── globals.css        # Tailwind + theme variables
+│   ├── layout.tsx         # Root layout + metadata
+│   └── page.tsx           # Main page (GraphCalculator)
+├── components/
+│   ├── Graph/
+│   │   └── index.tsx      # Canvas renderer (pan, zoom, draw)
+│   ├── FunctionList/
+│   │   └── index.tsx      # Function input list UI
+│   └── Controls/
+│       └── index.tsx      # Zoom/reset buttons
+├── lib/
+│   ├── math.ts            # mathjs wrapper + safe evaluation
+│   ├── math.test.ts       # Unit tests for math
+│   ├── graph-utils.ts     # Coordinate transforms, point generation
+│   └── graph-utils.test.ts # Unit tests for graph utils
+├── e2e/
+│   └── app.spec.ts        # Playwright E2E tests
+├── .github/workflows/
+│   └── ci-cd.yml          # CI/CD pipeline
+├── playwright.config.ts   # Playwright config
+├── vitest.config.ts       # Vitest config
+└── next.config.ts         # Next.js config (static export)
+```
 
-To learn more about Next.js, take a look at the following resources:
+## CI/CD Pipeline
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Every push and PR runs:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **🔍 Lint & Type Check** — ESLint + TypeScript strict
+2. **🧪 Unit Tests** — 35 tests (math parser, graph utils)
+3. **🏗️ Build** — Static export
+4. **🎭 E2E Tests** — Playwright (page load, interactions, responsive)
+5. **🚀 Deploy** — Cloudflare Pages (main branch only)
+6. **💡 Lighthouse** — Performance audit (main branch only)
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT © NH Prince Pradhan
