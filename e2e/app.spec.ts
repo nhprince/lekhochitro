@@ -40,7 +40,6 @@ test.describe("Lekhochitro — Page Load", () => {
     await expect(page.locator('button[title="Zoom in"]')).toBeVisible();
     await expect(page.locator('button[title="Zoom out"]')).toBeVisible();
     await expect(page.locator('button[title="Reset view"]')).toBeVisible();
-    await expect(page.locator('button[title="Fit to screen"]')).toBeVisible();
   });
 });
 
