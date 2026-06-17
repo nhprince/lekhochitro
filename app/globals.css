@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #111118;
+  --color-bg-tertiary: #1a1a24;
+  --color-grid: #1e1e2e;
+  --color-axis: #3b3b4f;
+  --color-text-primary: #e4e4e7;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+  --color-accent: #22d3ee;
+  --color-danger: #f87171;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+#__next {
+  height: 100%;
+  width: 100%;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--color-axis); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* Input styling */
+input[type="text"], input[type="number"] {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-axis);
+  color: var(--color-text-primary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--color-accent);
+}
