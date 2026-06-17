@@ -22,7 +22,10 @@ test.describe("Lekhochitro — Page Load", () => {
 
   test("function list is visible", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h3")).toContainText("ফাংশন");
+    // There may be two h3 elements (desktop sidebar + mobile panel)
+    // At least one should be visible
+    const headings = page.locator("h3");
+    await expect(headings.first()).toContainText("ফাংশন");
   });
 
   test("default functions are pre-loaded", async ({ page }) => {
