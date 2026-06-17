@@ -47,27 +47,13 @@ function getInitialState(): { fns: FunctionItem[]; view: ViewPort; mode: GraphMo
 export default function Home() {
   const initial = getInitialState();
   const [functions, setFunctions] = useState<FunctionItem[]>(
-    initial
-      ? initial.fns.map((f) => ({
-          id: crypto.randomUUID(),
-          expression: f.e,
-          color: f.c,
-          visible: f.v,
-          sliders: f.s?.map((sl) => ({
-            name: sl.n,
-            value: sl.v,
-            min: sl.min,
-            max: sl.max,
-            step: sl.st,
-          })),
-        }))
-      : [
-          { id: "1", expression: "sin(x)", color: COLORS[0], visible: true },
-          { id: "2", expression: "cos(x)", color: COLORS[1], visible: true },
-        ],
+    initial?.fns ?? [
+      { id: "1", expression: "sin(x)", color: COLORS[0], visible: true },
+      { id: "2", expression: "cos(x)", color: COLORS[1], visible: true },
+    ]
   );
   const [view, setView] = useState<ViewPort>(initial?.view ?? DEFAULT_VIEW);
-  const [mode, setMode] = useState<GraphMode>(initial?.m ?? "cartesian");
+  const [mode, setMode] = useState<GraphMode>(initial?.mode ?? "cartesian");
   const [showSolver, setShowSolver] = useState(false);
   const [showTable, setShowTable] = useState(false);
 
