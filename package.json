@@ -48,5 +48,6 @@
       "eslint --fix",
       "prettier --write"
     ]
-  }
+  },
+  "onlyBuiltDependencies": ["esbuild"]
 }
