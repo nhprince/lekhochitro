@@ -1,4 +1,5 @@
 name: CI/CD Pipeline
+# Trigger: v1.1 — enabled Cloudflare deploy
 
 on:
   push:
